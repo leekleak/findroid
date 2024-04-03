@@ -4,7 +4,9 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.Fragment
@@ -85,7 +87,15 @@ internal class PersonDetailFragment : Fragment() {
         uiState.apply {
             binding.name.text = data.name
             binding.overview.text = data.overview
-            setupOverviewExpansion()
+
+            if (binding.overview.text.isNullOrEmpty()) {
+                binding.overview.isGone = true
+            } else if (resources.getDimension(CoreR.dimen.person_detail_overview_height) < binding.overview.lineCount * binding.overview.lineHeight) {
+                binding.overview.layoutParams.height = resources.getDimension(CoreR.dimen.person_detail_overview_height).toInt()
+                binding.overviewGradient.isVisible = true
+                setupOverviewExpansion()
+            }
+
             bindItemImage(binding.personImage, data.dto)
 
             if (starredIn.movies.isNotEmpty()) {
@@ -124,15 +134,13 @@ internal class PersonDetailFragment : Fragment() {
     )
 
     private fun setupOverviewExpansion() = binding.overview.post {
-        binding.readAll.setOnClickListener {
+        binding.overview.setOnClickListener {
             with(binding.overview) {
-                if (layoutParams.height == ConstraintLayout.LayoutParams.WRAP_CONTENT) {
-                    updateLayoutParams { height = resources.getDimension(CoreR.dimen.person_detail_overview_height).toInt() }
-                    binding.readAll.text = getString(CoreR.string.view_all)
+                if (layoutParams.height == WRAP_CONTENT) {
+                    updateLayoutParams { layoutParams.height = resources.getDimension(CoreR.dimen.person_detail_overview_height).toInt() }
                     binding.overviewGradient.isVisible = true
                 } else {
-                    updateLayoutParams { height = ConstraintLayout.LayoutParams.WRAP_CONTENT }
-                    binding.readAll.text = getString(CoreR.string.hide)
+                    updateLayoutParams { layoutParams.height = WRAP_CONTENT }
                     binding.overviewGradient.isVisible = false
                 }
             }
