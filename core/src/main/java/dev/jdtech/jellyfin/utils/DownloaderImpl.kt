@@ -13,21 +13,23 @@ import dev.jdtech.jellyfin.models.FindroidEpisode
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.models.FindroidMovie
 import dev.jdtech.jellyfin.models.FindroidSource
-import dev.jdtech.jellyfin.models.TrickPlayManifest
+import dev.jdtech.jellyfin.models.FindroidSources
+import dev.jdtech.jellyfin.models.FindroidTrickplayInfo
 import dev.jdtech.jellyfin.models.UiText
 import dev.jdtech.jellyfin.models.toFindroidEpisodeDto
 import dev.jdtech.jellyfin.models.toFindroidMediaStreamDto
 import dev.jdtech.jellyfin.models.toFindroidMovieDto
 import dev.jdtech.jellyfin.models.toFindroidSeasonDto
+import dev.jdtech.jellyfin.models.toFindroidSegmentsDto
 import dev.jdtech.jellyfin.models.toFindroidShowDto
 import dev.jdtech.jellyfin.models.toFindroidSourceDto
+import dev.jdtech.jellyfin.models.toFindroidTrickplayInfoDto
 import dev.jdtech.jellyfin.models.toFindroidUserDataDto
-import dev.jdtech.jellyfin.models.toIntroDto
-import dev.jdtech.jellyfin.models.toTrickPlayManifestDto
 import dev.jdtech.jellyfin.repository.JellyfinRepository
 import java.io.File
 import java.util.UUID
 import kotlin.Exception
+import kotlin.math.ceil
 import dev.jdtech.jellyfin.core.R as CoreR
 
 class DownloaderImpl(
@@ -45,13 +47,9 @@ class DownloaderImpl(
     ): Pair<Long, UiText?> {
         try {
             val source = jellyfinRepository.getMediaSources(item.id, true).first { it.id == sourceId }
-            val intro = jellyfinRepository.getIntroTimestamps(item.id)
-            val trickPlayManifest = jellyfinRepository.getTrickPlayManifest(item.id)
-            val trickPlayData = if (trickPlayManifest != null) {
-                jellyfinRepository.getTrickPlayData(
-                    item.id,
-                    trickPlayManifest.widthResolutions.max(),
-                )
+            val segments = jellyfinRepository.getSegments(item.id)
+            val trickplayInfo = if (item is FindroidSources) {
+                item.trickplayInfo?.get(sourceId)
             } else {
                 null
             }
@@ -78,11 +76,11 @@ class DownloaderImpl(
                     database.insertSource(source.toFindroidSourceDto(item.id, path.path.orEmpty()))
                     database.insertUserData(item.toFindroidUserDataDto(jellyfinRepository.getUserId()))
                     downloadExternalMediaStreams(item, source, storageIndex)
-                    if (intro != null) {
-                        database.insertIntro(intro.toIntroDto(item.id))
+                    if (trickplayInfo != null) {
+                        downloadTrickplayData(item.id, sourceId, trickplayInfo)
                     }
-                    if (trickPlayManifest != null && trickPlayData != null) {
-                        downloadTrickPlay(item, trickPlayManifest, trickPlayData)
+                    segments.forEach {
+                        database.insertSegment(it.toFindroidSegmentsDto(item.id))
                     }
                     val request = DownloadManager.Request(source.path.toUri())
                         .setTitle(item.name)
@@ -107,11 +105,11 @@ class DownloaderImpl(
                     database.insertSource(source.toFindroidSourceDto(item.id, path.path.orEmpty()))
                     database.insertUserData(item.toFindroidUserDataDto(jellyfinRepository.getUserId()))
                     downloadExternalMediaStreams(item, source, storageIndex)
-                    if (intro != null) {
-                        database.insertIntro(intro.toIntroDto(item.id))
+                    if (trickplayInfo != null) {
+                        downloadTrickplayData(item.id, sourceId, trickplayInfo)
                     }
-                    if (trickPlayManifest != null && trickPlayData != null) {
-                        downloadTrickPlay(item, trickPlayManifest, trickPlayData)
+                    segments.forEach {
+                        database.insertSegment(it.toFindroidSegmentsDto(item.id))
                     }
                     val request = DownloadManager.Request(source.path.toUri())
                         .setTitle(item.name)
@@ -173,10 +171,7 @@ class DownloaderImpl(
 
         database.deleteUserData(item.id)
 
-        database.deleteIntro(item.id)
-
-        database.deleteTrickPlayManifest(item.id)
-        File(context.filesDir, "trickplay/${item.id}.bif").delete()
+        File(context.filesDir, "trickplay/${item.id}").deleteRecursively()
     }
 
     override suspend fun getProgress(downloadId: Long?): Pair<Int, Int> {
@@ -233,14 +228,37 @@ class DownloaderImpl(
         }
     }
 
-    private fun downloadTrickPlay(
-        item: FindroidItem,
-        trickPlayManifest: TrickPlayManifest,
-        byteArray: ByteArray,
+    private suspend fun downloadTrickplayData(
+        itemId: UUID,
+        sourceId: String,
+        trickplayInfo: FindroidTrickplayInfo,
     ) {
-        database.insertTrickPlayManifest(trickPlayManifest.toTrickPlayManifestDto(item.id))
-        File(context.filesDir, "trickplay").mkdirs()
-        val file = File(context.filesDir, "trickplay/${item.id}.bif")
-        file.writeBytes(byteArray)
+        val maxIndex = ceil(trickplayInfo.thumbnailCount.toDouble().div(trickplayInfo.tileWidth * trickplayInfo.tileHeight)).toInt()
+        val byteArrays = mutableListOf<ByteArray>()
+        for (i in 0..maxIndex) {
+            jellyfinRepository.getTrickplayData(
+                itemId,
+                trickplayInfo.width,
+                i,
+            )?.let { byteArray ->
+                byteArrays.add(byteArray)
+            }
+        }
+        saveTrickplayData(itemId, sourceId, trickplayInfo, byteArrays)
+    }
+
+    private fun saveTrickplayData(
+        itemId: UUID,
+        sourceId: String,
+        trickplayInfo: FindroidTrickplayInfo,
+        byteArrays: List<ByteArray>,
+    ) {
+        val basePath = "trickplay/$itemId/$sourceId"
+        database.insertTrickplayInfo(trickplayInfo.toFindroidTrickplayInfoDto(sourceId))
+        File(context.filesDir, basePath).mkdirs()
+        for ((i, byteArray) in byteArrays.withIndex()) {
+            val file = File(context.filesDir, "$basePath/$i")
+            file.writeBytes(byteArray)
+        }
     }
 }

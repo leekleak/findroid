@@ -1,6 +1,8 @@
 package dev.jdtech.jellyfin.viewmodels
 
 import android.app.Application
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.os.Handler
 import android.os.Looper
 import androidx.lifecycle.SavedStateHandle
@@ -18,17 +20,17 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.jdtech.jellyfin.AppPreferences
-import dev.jdtech.jellyfin.models.Intro
+import dev.jdtech.jellyfin.models.FindroidSegment
 import dev.jdtech.jellyfin.models.PlayerChapter
 import dev.jdtech.jellyfin.models.PlayerItem
+import dev.jdtech.jellyfin.models.Trickplay
 import dev.jdtech.jellyfin.mpv.MPVPlayer
 import dev.jdtech.jellyfin.player.video.R
 import dev.jdtech.jellyfin.repository.JellyfinRepository
-import dev.jdtech.jellyfin.utils.bif.BifData
-import dev.jdtech.jellyfin.utils.bif.BifUtil
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Runnable
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,6 +42,7 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
+import kotlin.math.ceil
 
 @HiltViewModel
 class PlayerActivityViewModel
@@ -55,8 +58,8 @@ constructor(
     private val _uiState = MutableStateFlow(
         UiState(
             currentItemTitle = "",
-            currentIntro = null,
-            currentTrickPlay = null,
+            currentSegment = null,
+            currentTrickplay = null,
             currentChapters = null,
             fileLoaded = false,
         ),
@@ -66,14 +69,10 @@ constructor(
     private val eventsChannel = Channel<PlayerEvents>()
     val eventsChannelFlow = eventsChannel.receiveAsFlow()
 
-    private val intros: MutableMap<UUID, Intro> = mutableMapOf()
-
-    private val trickPlays: MutableMap<UUID, BifData> = mutableMapOf()
-
     data class UiState(
         val currentItemTitle: String,
-        val currentIntro: Intro?,
-        val currentTrickPlay: BifData?,
+        val currentSegment: FindroidSegment?,
+        val currentTrickplay: Trickplay?,
         val currentChapters: List<PlayerChapter>?,
         val fileLoaded: Boolean,
     )
@@ -84,6 +83,7 @@ constructor(
     var playWhenReady = true
     private var currentMediaItemIndex = savedStateHandle["mediaItemIndex"] ?: 0
     private var playbackPosition: Long = savedStateHandle["position"] ?: 0
+    private var currentSegments: List<FindroidSegment> = emptyList()
 
     var playbackSpeed: Float = 1f
 
@@ -151,12 +151,6 @@ constructor(
                             .build()
                     }
 
-                    if (appPreferences.playerIntroSkipper) {
-                        jellyfinRepository.getIntroTimestamps(item.itemId)?.let { intro ->
-                            intros[item.itemId] = intro
-                        }
-                    }
-
                     Timber.d("Stream url: $streamUrl")
                     val mediaItem =
                         MediaItem.Builder()
@@ -186,11 +180,6 @@ constructor(
                 currentMediaItemIndex,
                 startPosition,
             )
-            if (appPreferences.playerMpv) { // For some reason, adding a 1ms delay between these two lines fixes a crash when playing with mpv from downloads
-                withContext(Dispatchers.IO) {
-                    Thread.sleep(1)
-                }
-            }
             player.prepare()
             player.play()
             pollPosition(player)
@@ -215,7 +204,7 @@ constructor(
             }
         }
 
-        _uiState.update { it.copy(currentTrickPlay = null) }
+        _uiState.update { it.copy(currentTrickplay = null) }
         playWhenReady = false
         playbackPosition = 0L
         currentMediaItemIndex = 0
@@ -244,24 +233,14 @@ constructor(
                 handler.postDelayed(this, 5000L)
             }
         }
-        val introCheckRunnable = object : Runnable {
+        val segmentCheckRunnable = object : Runnable {
             override fun run() {
-                if (player.currentMediaItem != null && player.currentMediaItem!!.mediaId.isNotEmpty()) {
-                    val itemId = UUID.fromString(player.currentMediaItem!!.mediaId)
-                    intros[itemId]?.let { intro ->
-                        val seconds = player.currentPosition / 1000.0
-                        if (seconds > intro.showSkipPromptAt && seconds < intro.hideSkipPromptAt) {
-                            _uiState.update { it.copy(currentIntro = intro) }
-                            return@let
-                        }
-                        _uiState.update { it.copy(currentIntro = null) }
-                    }
-                }
+                updateCurrentSegment()
                 handler.postDelayed(this, 1000L)
             }
         }
         handler.post(playbackProgressRunnable)
-        if (intros.isNotEmpty()) handler.post(introCheckRunnable)
+        handler.post(segmentCheckRunnable)
     }
 
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -280,12 +259,22 @@ constructor(
                         } else {
                             item.name
                         }
-                        _uiState.update { it.copy(currentItemTitle = itemTitle, currentChapters = item.chapters, fileLoaded = false) }
+                        _uiState.update {
+                            it.copy(
+                                currentItemTitle = itemTitle,
+                                currentSegment = null,
+                                currentChapters = item.chapters,
+                                fileLoaded = false,
+                            )
+                        }
 
                         jellyfinRepository.postPlaybackStart(item.itemId)
 
-                        if (appPreferences.playerTrickPlay) {
-                            getTrickPlay(item.itemId)
+                        if (appPreferences.playerTrickplay) {
+                            getTrickplay(item)
+                        }
+                        if (appPreferences.playerIntroSkipper) {
+                            getSegments(item)
                         }
                     }
             } catch (e: Exception) {
@@ -346,28 +335,48 @@ constructor(
         playbackSpeed = speed
     }
 
-    private suspend fun getTrickPlay(itemId: UUID) {
-        if (trickPlays[itemId] != null) return
-        jellyfinRepository.getTrickPlayManifest(itemId)
-            ?.let { trickPlayManifest ->
-                val widthResolution =
-                    trickPlayManifest.widthResolutions.max()
-                Timber.d("Trickplay Resolution: $widthResolution")
+    private suspend fun getTrickplay(item: PlayerItem) {
+        val trickplayInfo = item.trickplayInfo ?: return
+        Timber.d("Trickplay Resolution: ${trickplayInfo.width}")
 
-                jellyfinRepository.getTrickPlayData(
-                    itemId,
-                    widthResolution,
+        withContext(Dispatchers.Default) {
+            val maxIndex = ceil(trickplayInfo.thumbnailCount.toDouble().div(trickplayInfo.tileWidth * trickplayInfo.tileHeight)).toInt()
+            val bitmaps = mutableListOf<Bitmap>()
+
+            for (i in 0..maxIndex) {
+                jellyfinRepository.getTrickplayData(
+                    item.itemId,
+                    trickplayInfo.width,
+                    i,
                 )?.let { byteArray ->
-                    val trickPlayData =
-                        BifUtil.trickPlayDecode(byteArray, widthResolution)
-
-                    trickPlayData?.let { bifData ->
-                        Timber.d("Trickplay Images: ${bifData.imageCount}")
-                        trickPlays[itemId] = bifData
-                        _uiState.update { it.copy(currentTrickPlay = trickPlays[itemId]) }
+                    val fullBitmap = BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size)
+                    for (offsetY in 0..<trickplayInfo.height * trickplayInfo.tileHeight step trickplayInfo.height) {
+                        for (offsetX in 0..<trickplayInfo.width * trickplayInfo.tileWidth step trickplayInfo.width) {
+                            val bitmap = Bitmap.createBitmap(fullBitmap, offsetX, offsetY, trickplayInfo.width, trickplayInfo.height)
+                            bitmaps.add(bitmap)
+                        }
                     }
                 }
             }
+            _uiState.update { it.copy(currentTrickplay = Trickplay(trickplayInfo.interval, bitmaps)) }
+        }
+    }
+
+    private suspend fun getSegments(item: PlayerItem) {
+        jellyfinRepository.getSegments(item.itemId).let { segments ->
+            currentSegments = segments
+        }
+    }
+
+    private fun updateCurrentSegment() {
+        if (currentSegments.isEmpty()) {
+            return
+        }
+        val seconds = player.currentPosition / 1000.0
+
+        val currentSegment = currentSegments.find { segment -> seconds in segment.startTime..<segment.endTime }
+        Timber.tag("SegmentInfo").d("currentSegment: %s", currentSegment)
+        _uiState.update { it.copy(currentSegment = currentSegment) }
     }
 
     /**

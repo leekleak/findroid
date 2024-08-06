@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -29,11 +31,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.tv.foundation.lazy.list.TvLazyRow
-import androidx.tv.foundation.lazy.list.items
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
-import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.OutlinedButton
@@ -42,12 +41,12 @@ import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.ramcosta.composedestinations.annotation.Destination
+import com.ramcosta.composedestinations.annotation.RootGraph
+import com.ramcosta.composedestinations.generated.NavGraphs
+import com.ramcosta.composedestinations.generated.destinations.LoginScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.MainScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
-import com.ramcosta.composedestinations.navigation.popUpTo
-import dev.jdtech.jellyfin.NavGraphs
 import dev.jdtech.jellyfin.api.JellyfinApi
-import dev.jdtech.jellyfin.destinations.LoginScreenDestination
-import dev.jdtech.jellyfin.destinations.MainScreenDestination
 import dev.jdtech.jellyfin.models.Server
 import dev.jdtech.jellyfin.models.User
 import dev.jdtech.jellyfin.ui.dummy.dummyServer
@@ -61,7 +60,7 @@ import dev.jdtech.jellyfin.viewmodels.UserSelectViewModel
 import org.jellyfin.sdk.model.api.ImageType
 import dev.jdtech.jellyfin.core.R as CoreR
 
-@Destination
+@Destination<RootGraph>
 @Composable
 fun UserSelectScreen(
     navigator: DestinationsNavigator,
@@ -99,7 +98,6 @@ fun UserSelectScreen(
     )
 }
 
-@OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun UserSelectScreenLayout(
     uiState: UserSelectViewModel.UiState,
@@ -148,7 +146,7 @@ private fun UserSelectScreenLayout(
                     style = MaterialTheme.typography.bodyMedium,
                 )
             } else {
-                TvLazyRow(
+                LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacings.default),
                     contentPadding = PaddingValues(MaterialTheme.spacings.default),
                     modifier = Modifier.focusRequester(focusRequester),
@@ -204,7 +202,6 @@ private fun UserSelectScreenLayoutPreviewNoUsers() {
     }
 }
 
-@OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun UserComponent(
     user: User,

@@ -10,17 +10,17 @@ import dev.jdtech.jellyfin.models.FindroidEpisodeDto
 import dev.jdtech.jellyfin.models.FindroidMediaStreamDto
 import dev.jdtech.jellyfin.models.FindroidMovieDto
 import dev.jdtech.jellyfin.models.FindroidSeasonDto
+import dev.jdtech.jellyfin.models.FindroidSegmentDto
 import dev.jdtech.jellyfin.models.FindroidShowDto
 import dev.jdtech.jellyfin.models.FindroidSourceDto
+import dev.jdtech.jellyfin.models.FindroidTrickplayInfoDto
 import dev.jdtech.jellyfin.models.FindroidUserDataDto
-import dev.jdtech.jellyfin.models.IntroDto
 import dev.jdtech.jellyfin.models.Server
 import dev.jdtech.jellyfin.models.ServerAddress
 import dev.jdtech.jellyfin.models.ServerWithAddressAndUser
 import dev.jdtech.jellyfin.models.ServerWithAddresses
 import dev.jdtech.jellyfin.models.ServerWithAddressesAndUsers
 import dev.jdtech.jellyfin.models.ServerWithUsers
-import dev.jdtech.jellyfin.models.TrickPlayManifestDto
 import dev.jdtech.jellyfin.models.User
 import java.util.UUID
 
@@ -147,15 +147,6 @@ interface ServerDatabaseDao {
     @Query("UPDATE userdata SET favorite = :favorite WHERE userId = :userId AND itemId = :itemId")
     fun setFavorite(userId: UUID, itemId: UUID, favorite: Boolean)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun insertTrickPlayManifest(trickPlayManifestDto: TrickPlayManifestDto)
-
-    @Query("SELECT * FROM trickPlayManifests WHERE itemId = :itemId")
-    fun getTrickPlayManifest(itemId: UUID): TrickPlayManifestDto?
-
-    @Query("DELETE FROM trickPlayManifests WHERE itemId = :itemId")
-    fun deleteTrickPlayManifest(itemId: UUID)
-
     @Query("SELECT * FROM movies ORDER BY name ASC")
     fun getMovies(): List<FindroidMovieDto>
 
@@ -214,13 +205,10 @@ interface ServerDatabaseDao {
     fun deleteEpisodesBySeasonId(seasonId: UUID)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun insertIntro(intro: IntroDto)
+    fun insertSegment(segment: FindroidSegmentDto)
 
-    @Query("SELECT * FROM intros WHERE itemId = :itemId")
-    fun getIntro(itemId: UUID): IntroDto?
-
-    @Query("DELETE FROM intros WHERE itemId = :itemId")
-    fun deleteIntro(itemId: UUID)
+    @Query("SELECT * FROM segments WHERE itemId = :itemId")
+    fun getSegments(itemId: UUID): List<FindroidSegmentDto>
 
     @Query("SELECT * FROM seasons")
     fun getSeasons(): List<FindroidSeasonDto>
@@ -270,4 +258,10 @@ interface ServerDatabaseDao {
 
     @Query("SELECT * FROM episodes WHERE serverId = :serverId AND name LIKE '%' || :name || '%'")
     fun searchEpisodes(serverId: String, name: String): List<FindroidEpisodeDto>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insertTrickplayInfo(trickplayInfoDto: FindroidTrickplayInfoDto)
+
+    @Query("SELECT * FROM trickplayInfos WHERE sourceId = :sourceId")
+    fun getTrickplayInfo(sourceId: String): FindroidTrickplayInfoDto?
 }

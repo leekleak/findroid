@@ -32,14 +32,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.material3.Button
-import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.ramcosta.composedestinations.annotation.Destination
+import com.ramcosta.composedestinations.annotation.RootGraph
+import com.ramcosta.composedestinations.generated.destinations.LoginScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
-import dev.jdtech.jellyfin.destinations.LoginScreenDestination
 import dev.jdtech.jellyfin.ui.theme.FindroidTheme
 import dev.jdtech.jellyfin.ui.theme.spacings
 import dev.jdtech.jellyfin.utils.ObserveAsEvents
@@ -47,7 +47,7 @@ import dev.jdtech.jellyfin.viewmodels.AddServerEvent
 import dev.jdtech.jellyfin.viewmodels.AddServerViewModel
 import dev.jdtech.jellyfin.core.R as CoreR
 
-@Destination
+@Destination<RootGraph>
 @Composable
 fun AddServerScreen(
     navigator: DestinationsNavigator,
@@ -71,7 +71,6 @@ fun AddServerScreen(
     )
 }
 
-@OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun AddServerScreenLayout(
     uiState: AddServerViewModel.UiState,
@@ -117,7 +116,7 @@ private fun AddServerScreenLayout(
                 },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
-                    autoCorrect = false,
+                    autoCorrectEnabled = false,
                     keyboardType = KeyboardType.Uri,
                     imeAction = ImeAction.Go,
                 ),

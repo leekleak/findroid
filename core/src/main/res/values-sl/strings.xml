@@ -103,7 +103,7 @@
     <string name="pref_player_mpv_vo">Video izhod</string>
     <string name="pref_player_mpv_ao">Avdio izhod</string>
     <string name="pref_player_intro_skipper">Preskoči uvode</string>
-    <string name="pref_player_intro_skipper_summary">Zahteven je vtičnik ConfusedPolarBear Intro Skipper</string>
+    <string name="pref_player_intro_skipper_summary">Zahteven je vtičnik jumoog Intro Skipper</string>
     <string name="addresses">Naslovi</string>
     <string name="add_address">Dodaj naslov</string>
     <string name="add_server_address">Dodajte naslov strežnika</string>
@@ -139,7 +139,6 @@
     <string name="track_selection">[%1$s] %2$s (%3$s)</string>
     <string name="settings_connect_timeout">Časovna omejitev povezave (ms)</string>
     <string name="cancel_download_message">Ali ste prepričani, da želite preklicati prenos\?</string>
-    <string name="pref_player_trick_play_summary">Zahteva namestitev vtičnika nicknsy Jellyscrub na strežniku</string>
     <string name="size">Velikost</string>
     <string name="offline_mode">Način brez povezave</string>
     <string name="offline_mode_go_online">izhod iz načina brez povezave</string>

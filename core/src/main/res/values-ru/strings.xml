@@ -120,7 +120,7 @@
     <string name="seek_back_increment">Шаг перемотки назад (мс)</string>
     <string name="settings_category_network">Сеть</string>
     <string name="pref_player_mpv_ao">Вывод звука</string>
-    <string name="pref_player_intro_skipper_summary">Требуется, чтобы на сервере был установлен плагин Intro Skipper от ConfusedPolarBear</string>
+    <string name="pref_player_intro_skipper_summary">Требуется, чтобы на сервере был установлен плагин Intro Skipper от jumoog</string>
     <string name="episodes_label">Эпизоды</string>
     <string name="image_description_backdrop">%1$s фон</string>
     <string name="seeking">Перемотка</string>
@@ -136,8 +136,6 @@
     <string name="settings_request_timeout">Время ожидания запроса (мс)</string>
     <string name="settings_connect_timeout">Время ожидания соединения (мс)</string>
     <string name="settings_socket_timeout">Время ожидания сокета (мс)</string>
-    <string name="pref_player_trick_play_summary">Требуется, чтобы на сервере был установлен плагин Jellyscrub от nicknsy</string>
-    <string name="pref_player_trick_play">Миниатюры предпросмотра (Trick Play)</string>
     <string name="subtitle">Субтитры</string>
     <string name="extra_info_summary">Показывает дополнительную информацию о Аудио, Видео и Субтитрах</string>
     <string name="extra_info">Показывать дополнительную информацию</string>

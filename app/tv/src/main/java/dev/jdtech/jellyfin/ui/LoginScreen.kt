@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
@@ -32,17 +33,16 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.material3.Button
-import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Text
 import com.ramcosta.composedestinations.annotation.Destination
+import com.ramcosta.composedestinations.annotation.RootGraph
+import com.ramcosta.composedestinations.generated.NavGraphs
+import com.ramcosta.composedestinations.generated.destinations.MainScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
-import com.ramcosta.composedestinations.navigation.popUpTo
-import dev.jdtech.jellyfin.NavGraphs
-import dev.jdtech.jellyfin.destinations.MainScreenDestination
 import dev.jdtech.jellyfin.models.UiText
 import dev.jdtech.jellyfin.ui.theme.FindroidTheme
 import dev.jdtech.jellyfin.ui.theme.spacings
@@ -51,7 +51,7 @@ import dev.jdtech.jellyfin.viewmodels.LoginEvent
 import dev.jdtech.jellyfin.viewmodels.LoginViewModel
 import dev.jdtech.jellyfin.core.R as CoreR
 
-@Destination
+@Destination<RootGraph>
 @Composable
 fun LoginScreen(
     navigator: DestinationsNavigator,
@@ -86,7 +86,6 @@ fun LoginScreen(
     )
 }
 
-@OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun LoginScreenLayout(
     uiState: LoginViewModel.UiState,
@@ -108,6 +107,14 @@ private fun LoginScreenLayout(
             quickConnectValue = quickConnectUiState.code
         }
         else -> Unit
+    }
+
+    var disclaimer: String? by remember {
+        mutableStateOf(null)
+    }
+
+    if (uiState is LoginViewModel.UiState.Normal) {
+        disclaimer = uiState.disclaimer
     }
 
     val isError = uiState is LoginViewModel.UiState.Error
@@ -145,7 +152,7 @@ private fun LoginScreenLayout(
                 label = { Text(text = stringResource(id = CoreR.string.edit_text_username_hint)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
-                    autoCorrect = false,
+                    autoCorrectEnabled = false,
                     keyboardType = KeyboardType.Text,
                     imeAction = ImeAction.Next,
                 ),
@@ -168,7 +175,7 @@ private fun LoginScreenLayout(
                 label = { Text(text = stringResource(id = CoreR.string.edit_text_password_hint)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
-                    autoCorrect = false,
+                    autoCorrectEnabled = false,
                     keyboardType = KeyboardType.Password,
                     imeAction = ImeAction.Go,
                 ),
@@ -241,6 +248,10 @@ private fun LoginScreenLayout(
                     }
                 }
             }
+            Text(
+                text = disclaimer ?: "",
+                modifier = Modifier.padding(MaterialTheme.spacings.default),
+            )
         }
     }
 
@@ -254,7 +265,7 @@ private fun LoginScreenLayout(
 private fun LoginScreenLayoutPreview() {
     FindroidTheme {
         LoginScreenLayout(
-            uiState = LoginViewModel.UiState.Normal,
+            uiState = LoginViewModel.UiState.Normal(),
             quickConnectUiState = LoginViewModel.QuickConnectUiState.Normal,
             onLoginClick = { _, _ -> },
             onQuickConnectClick = {},

@@ -39,15 +39,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.material3.Button
-import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import com.ramcosta.composedestinations.annotation.Destination
+import com.ramcosta.composedestinations.annotation.RootGraph
+import com.ramcosta.composedestinations.generated.destinations.PlayerActivityDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
-import dev.jdtech.jellyfin.destinations.PlayerActivityDestination
 import dev.jdtech.jellyfin.models.AudioChannel
 import dev.jdtech.jellyfin.models.AudioCodec
 import dev.jdtech.jellyfin.models.DisplayProfile
@@ -62,10 +62,11 @@ import dev.jdtech.jellyfin.viewmodels.MovieViewModel
 import dev.jdtech.jellyfin.viewmodels.PlayerItemsEvent
 import dev.jdtech.jellyfin.viewmodels.PlayerViewModel
 import org.jellyfin.sdk.model.api.BaseItemPerson
+import org.jellyfin.sdk.model.api.PersonKind
 import java.util.UUID
 import dev.jdtech.jellyfin.core.R as CoreR
 
-@Destination
+@Destination<RootGraph>
 @Composable
 fun MovieScreen(
     navigator: DestinationsNavigator,
@@ -115,7 +116,6 @@ fun MovieScreen(
     )
 }
 
-@OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun MovieScreenLayout(
     uiState: MovieViewModel.UiState,
@@ -345,6 +345,7 @@ private fun MovieScreenLayoutPreview() {
                 director = BaseItemPerson(
                     id = UUID.randomUUID(),
                     name = "Robert Rodriguez",
+                    type = PersonKind.DIRECTOR,
                 ),
                 writers = emptyList(),
                 videoMetadata = VideoMetadata(
